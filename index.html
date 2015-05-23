@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8">
 
-    <title>FIXME</title>
+    <title>Concurrency abstractions in Scala - concurrent.Future, Actors (Akka), Observable (RxScala)</title>
 
-    <meta name="description" content="FIXME">
+    <meta name="description" content="Slides about Concurrency abstractions in Scala - concurrent.Future, Actors (Akka), Observable (RxScala)">
     <meta name="author" content="Jacek Laskowski">
 
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -14,7 +14,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
 
     <link rel="stylesheet" href="css/reveal.css">
-    <link rel="stylesheet" href="css/theme/black.css" id="theme">
+    <link rel="stylesheet" href="css/theme/beige.css" id="theme">
 
     <!-- Code syntax highlighting -->
     <link rel="stylesheet" href="lib/css/zenburn.css">
@@ -38,8 +38,8 @@
 
       <div class="slides">
         <section class="intro" data-transition="zoom">
-          <h1>FIXME</h1>
-          <h3>FIXME</h4>
+          <h1>Concurrency abstractions in Scala</h1>
+          <h3>concurrent.<a href="http://www.scala-lang.org/api/current/#scala.concurrent.Future">Future</a>, Actors (<a href="http://akka.io/">Akka</a>), Observable (<a href="http://reactivex.io/rxscala/">RxScala</a>)</h4>
           <br>
           <h4><a href="https://blog.jaceklaskowski.pl">Jacek Laskowski</a> / <a href="https://twitter.com/jaceklaskowski">@jaceklaskowski</a> / <a href="https://github.com/jaceklaskowski">GitHub</a></h4>
         </section>
@@ -62,6 +62,279 @@
           <section>
             <h1>Picture time!</h1>
             <a href="https://flic.kr/p/rdgugM"><img src="images/animal-smile.jpg"/></a>
+          </section>
+        </section>
+
+        <section>
+          <section data-transition="zoom" data-markdown>
+            <script>
+# concurrent.Future[T]
+## Scala
+            </script>
+          </section>
+        </section>
+
+        <section>
+          <section data-markdown>
+            <script>
+## concurrent.Future[T]
+
+* A living object holding a value which **may become available at some point**.
+  * Value is the result of some **lengthy** computation
+* **Future** object executes **asynchronously** without blocking current thread
+  * Uses [concurrent.ExecutionContext](http://www.scala-lang.org/api/current/#scala.concurrent.ExecutionContext)
+* To reason about parallel computation is so much easier!
+* Details in [Futures and Promises](http://docs.scala-lang.org/overviews/core/futures.html)
+            </script>
+          </section>
+
+          <section>
+            <h2>Step 1. ExecutionContext missing</h2>
+            <img src="images/future-repl-no-execution-context.png"/>
+          </section>
+          <section>
+            <h2>Step 2. ExecutionContext in scope</h2>
+            <img src="images/future-repl-execution-context-defined.png"/>
+          </section>
+          <section>
+            <h2>Future object</h2>
+            <img src="images/future-repl-future-one.png"/>
+            <p>How much time passes to print "Hello..."?</p>
+          </section>
+          <section>
+            <h2>Future object</h2>
+            <img src="images/future-repl-onComplete.png"/>
+          </section>
+          <section data-markdown>
+            <script>
+## Future composition
+
+```
+import scala.util.Success
+
+oneF.andThen {
+  case Success(one) => println(one)
+}.map(_ * 10).foreach(println)
+```
+
+* What&rsquo;s the result?
+* How much time does the computation take?
+            </script>
+          </section>
+          <section data-markdown>
+            <script>
+## Handling Failure in Future
+
+```
+import scala.util.Failure
+
+val throwExceptionF =
+  Future.failed(new Exception("Failing...sorry"))
+
+throwExceptionF.andThen {
+  case Success(s) => println(s)
+}.onComplete {
+  case Failure(ex) =>
+    println("Future failed due to " + ex)
+  case _ => ???
+}
+```
+
+* What&rsquo;s the result?
+* How much time does the computation take?
+            </script>
+          </section>
+        </section>
+
+        <section>
+          <section data-transition="zoom" data-markdown>
+            <script>
+# Actors
+## Akka
+            </script>
+          </section>
+        </section>
+
+        <section>
+          <section data-markdown>
+            <script>
+## Actor Model
+
+> a mathematical model of concurrent computation that treats "actors" as the universal primitives of concurrent computation
+
+<small>Source: Wikipedia&rsquo;s [Actor model](http://en.wikipedia.org/wiki/Actor_model)</small>
+            </script>
+          </section>
+          <section data-markdown style="text-align: left">
+            <script>
+## Actor Model
+
+In response to **a message**, the actor can:
+
+- make local decisions
+- create more actors
+- send more messages
+- determine how to respond to the next message received
+
+<small>Source: Wikipedia&rsquo;s [Actor model](http://en.wikipedia.org/wiki/Actor_model)</small>
+            </script>
+          </section>
+          <section data-markdown style="text-align: left">
+            <script>
+## Actor Model in Akka
+
+- Actors are objects that encapsulate state and behavior
+- Actor communicate by messages
+- While modeling a solution with actors, envision a group of people and assign sub-tasks to them
+- (Akka) Think about how to escalate failure (arrange them into an organizational structure)
+- *"Let it crash"* = self-heal and never stop
+
+<small>Source: Akka&rsquo;s [documentation](http://doc.akka.io/docs/akka/snapshot/general/actor-systems.html#actor-systems)</small>
+            </script>
+          </section>
+          <section data-markdown style="text-align: left">
+            <script>
+## Actors in Akka
+
+- **Actor** is a container for State, Behavior, a Mailbox, Children and a Supervisor Strategy
+- **Actor reference** gives location transparency
+
+<small>Source: Akka&rsquo;s [documentation](http://doc.akka.io/docs/akka/snapshot/general/actors.html)</small>
+            </script>
+          </section>
+          <section data-markdown>
+            <script>
+## Actor skeleton
+
+```
+import akka.actor.{Actor, ActorLogging, Props}
+
+class PingActor extends Actor with ActorLogging {
+  def receive /** PartialFunction[Any, Unit] **/ = {
+    case _ => ???
+  }
+}
+```
+            </script>
+          </section>
+          <section data-markdown>
+            <script>
+## Actor Messages
+
+```
+// class PingActor extends Actor with ActorLogging
+
+object PingActor {
+  val props = Props[PingActor]
+  case object Initialize
+  case class PingMessage(text: String)
+}
+```
+            </script>
+          </section>
+          <section data-markdown>
+            <script>
+## Actor-based Application skeleton
+
+```
+import akka.actor.ActorSystem
+
+object ActorDemo extends App {
+
+  val system = ActorSystem("ActorDemo")
+  val pingActor = system.actorOf(PingActor.props, "pingActor")
+
+  pingActor ! PingActor.Initialize
+
+  system.awaitTermination()
+}
+```
+            </script>
+          </section>
+          <section data-markdown>
+            <script>
+## Future[T] in Actor
+
+```
+import akka.pattern.ask
+import system.dispatcher // ExecutionContext
+
+object ActorDemo extends App {
+
+  import concurrent.duration._
+  implicit val timeout = 5.seconds
+
+  val system = ActorSystem("ActorDemo")
+  val pingActor = system.actorOf(PingActor.props, "pingActor")
+
+  pingActor ? PingActor.Message // <-- what the type of the response is?
+
+  system.awaitTermination()
+}
+```
+            </script>
+          </section>
+        </section>
+
+        <section>
+          <section data-transition="zoom" data-markdown>
+            <script>
+# Observable
+## RxScala
+            </script>
+          </section>
+        </section>
+
+        <section>
+          <section data-markdown>
+            <script>
+## Rx&rsquo;s Observable
+
+* **Observable** object represents a push-based collection.
+* [Observer](http://reactivex.io/rxscala/scaladoc/index.html#rx.lang.scala.Observer) and [Observable](http://reactivex.io/rxscala/scaladoc/index.html#rx.lang.scala.Observable) interfaces provide a generalized mechanism for push-based notification, also known as the **observer design pattern**.
+            </script>
+          </section>
+          <section data-markdown>
+            <script>
+## trait Observer[-T]
+
+* Mechanism for receiving **push-based notifications**
+* def [onCompleted()](http://reactivex.io/rxscala/scaladoc/index.html#rx.lang.scala.Observer): Unit
+* def [onError(error: Throwable)](http://reactivex.io/rxscala/scaladoc/index.html#rx.lang.scala.Observer): Unit
+* def [onNext(value: T)](http://reactivex.io/rxscala/scaladoc/index.html#rx.lang.scala.Observer): Unit
+            </script>
+          </section>
+          <section data-markdown>
+            <script>
+## trait Observable[+T]
+
+* Implements the **Reactive Pattern**
+* Plethora of collection-like **composable methods**
+  * See [rx.lang.scala.Observable](http://reactivex.io/rxscala/scaladoc/index.html#rx.lang.scala.Observable)
+* Known Subclasses: AsyncSubject, BehaviorSubject, ConnectableObservable, ReplaySubject, SerializedSubject, Subject, TestSubject
+* You can *easily* create your own, too!
+            </script>
+          </section>
+          <section data-markdown>
+            <script>
+## object Observable
+
+* Constructs new Observables
+* See [rx.lang.scala.Observable](http://reactivex.io/rxscala/scaladoc/index.html#rx.lang.scala.Observable$)
+            </script>
+          </section>
+          <section data-markdown>
+            <script>
+## Example
+
+```
+val o = Observable.from(0 to 10)
+
+val observer = Observer(onNext = println)
+
+o.subscribe(observer)
+```
+            </script>
           </section>
         </section>
 
