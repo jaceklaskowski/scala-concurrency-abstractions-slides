@@ -66,10 +66,19 @@
         </section>
 
         <section>
+          <h2>Agenda</h2>
+          <ul>
+            <li><a href="#/future">concurrent.Future[T]</a></li>
+            <li><a href="#/akka">Actors in Akka</a></li>
+            <li><a href="#/rxscala">Observable in RxScala</a></li>
+          </ul>
+        </section>
+
+        <section id="future">
           <section data-transition="zoom" data-markdown>
             <script>
 # concurrent.Future[T]
-## Scala
+## [Scala](http://www.scala-lang.org/files/archive/nightly/docs/library/index.html#scala.concurrent.Future)
             </script>
           </section>
         </section>
@@ -89,7 +98,7 @@
           </section>
 
           <section>
-            <h2>Step 1. ExecutionContext missing</h2>
+            <h2>Step 1. ExecutionContext missing?</h2>
             <img src="images/future-repl-no-execution-context.png"/>
           </section>
           <section>
@@ -146,11 +155,11 @@ throwExceptionF.andThen {
           </section>
         </section>
 
-        <section>
+        <section id="akka">
           <section data-transition="zoom" data-markdown>
             <script>
 # Actors
-## Akka
+## [Akka](http://akka.io/)
             </script>
           </section>
         </section>
@@ -262,12 +271,16 @@ import system.dispatcher // ExecutionContext
 object ActorDemo extends App {
 
   import concurrent.duration._
-  implicit val timeout = 5.seconds
+  import akka.util.Timeout
+  implicit val timeout = Timeout(5.seconds)
 
   val system = ActorSystem("ActorDemo")
   val pingActor = system.actorOf(PingActor.props, "pingActor")
 
-  pingActor ? PingActor.Message // <-- what the type of the response is?
+  val respF: Future[String] = // <-- Note the type of the response
+    (pingActor ? PingActor.Initialize).mapTo[String]
+
+  respF.onComplete(println)
 
   system.awaitTermination()
 }
@@ -276,11 +289,11 @@ object ActorDemo extends App {
           </section>
         </section>
 
-        <section>
+        <section id="rxscala">
           <section data-transition="zoom" data-markdown>
             <script>
 # Observable
-## RxScala
+## [RxScala](http://reactivex.io/rxscala/)
             </script>
           </section>
         </section>
