@@ -98,21 +98,63 @@
           </section>
 
           <section>
-            <h2>Step 1. ExecutionContext missing?</h2>
-            <img src="images/future-repl-no-execution-context.png"/>
+            <h2>Doh! ExecutionContext missing?!</h2>
+            <pre><code class="scala" data-trim style="font-size: 18px;">
+scala> import concurrent.Future
+import concurrent.Future
+
+scala> val oneF = Future(1)
+&lt;console>:8: error: Cannot find an implicit ExecutionContext. You might pass
+an (implicit ec: ExecutionContext) parameter to your method
+or import scala.concurrent.ExecutionContext.Implicits.global.
+       val oneF = Future(1)
+                        ^
+            </code></pre>
+            <p><b>Advice:</b> Listen to the compiler, i.e. read the output!</p>
           </section>
           <section>
-            <h2>Step 2. ExecutionContext in scope</h2>
-            <img src="images/future-repl-execution-context-defined.png"/>
+            <h2>Roger that. ExecutionContext in scope</h2>
+            <pre><code class="scala" data-trim style="font-size: 18px;">
+scala> import concurrent.ExecutionContext.Implicits.global
+import concurrent.ExecutionContext.Implicits.global
+
+scala> val oneF = Future(1)
+oneF: scala.concurrent.Future[Int] = scala.concurrent.impl.Promise$DefaultPromise@3124e19a
+            </code></pre>
           </section>
           <section>
             <h2>Future object</h2>
-            <img src="images/future-repl-future-one.png"/>
-            <p>How much time passes to print "Hello..."?</p>
+            <pre><code class="scala" class="stretch" data-trim contenteditable style="font-size: 18px;">
+import concurrent.Future
+import concurrent.ExecutionContext.Implicits.global
+
+println("[outside] " + Thread.currentThread.getName)
+
+val oneF = Future {
+  import java.util.concurrent.TimeUnit
+  TimeUnit.SECONDS.sleep(5)
+  println("[inside Future] " + Thread.currentThread.getName)
+  1
+}
+            </code></pre>
+            <ul>
+              <li class="fragment">How much time passes to print "[outside]..."?</li>
+              <li class="fragment">What about "[inside Future]..."?</li>
+              <li class="fragment">What are the thread names for [outside] and [inside Future]?</li>
+            </ul>
           </section>
           <section>
             <h2>Future object</h2>
-            <img src="images/future-repl-onComplete.png"/>
+            <pre><code class="scala" data-trim contenteditable style="font-size: 18px;">
+oneF.onComplete { v =>
+  // do something useful with the computed value
+  println(s"Received on ${Thread.currentThread.getName}: $v")
+}
+            </code></pre>
+            <ul>
+              <li class="fragment">When is <code>println</code> executed?</li>
+              <li class="fragment">What thread is used? <code>oneF</code>'s? main? Another?</li>
+            </ul>
           </section>
           <section data-markdown>
             <script>
@@ -126,8 +168,8 @@ oneF.andThen {
 }.map(_ * 10).foreach(println)
 ```
 
-* What&rsquo;s the result?
-* How much time does the computation take?
+* What&rsquo;s the result? <!-- .element: class="fragment" -->
+* How much time does the computation take? <!-- .element: class="fragment" -->
             </script>
           </section>
           <section data-markdown>
@@ -145,12 +187,12 @@ throwExceptionF.andThen {
 }.onComplete {
   case Failure(ex) =>
     println("Future failed due to " + ex)
-  case _ => ???
+  case _ => ??? // <-- We don't care since it's not matched upon, anyway
 }
 ```
 
-* What&rsquo;s the result?
-* How much time does the computation take?
+* What&rsquo;s the result? <!-- .element: class="fragment" -->
+* How much time does the computation take? <!-- .element: class="fragment" -->
             </script>
           </section>
         </section>
